@@ -33,8 +33,6 @@ import org.apache.hadoop.thirdparty.com.google.common.annotations.VisibleForTest
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.security.AccessControlContext;
-import java.security.AccessController;
 import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
@@ -86,6 +84,7 @@ import org.apache.hadoop.metrics2.lib.MutableQuantiles;
 import org.apache.hadoop.metrics2.lib.MutableRate;
 import org.apache.hadoop.security.SaslRpcServer.AuthMethod;
 import org.apache.hadoop.security.authentication.util.KerberosUtil;
+import org.apache.hadoop.security.authentication.util.SubjectUtil;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.util.Shell;
@@ -574,8 +573,7 @@ public class UserGroupInformation {
   @InterfaceStability.Evolving
   public static UserGroupInformation getCurrentUser() throws IOException {
     ensureInitialized();
-    AccessControlContext context = AccessController.getContext();
-    Subject subject = Subject.getSubject(context);
+    Subject subject = SubjectUtil.current();
     if (subject == null || subject.getPrincipals(User.class).isEmpty()) {
       return getLoginUser();
     } else {
@@ -1871,9 +1869,9 @@ public class UserGroupInformation {
   @InterfaceStability.Evolving
   public <T> T doAs(PrivilegedAction<T> action) {
     tracePrivilegedAction(action);
-    return Subject.doAs(subject, action);
+    return SubjectUtil.doAs(subject, action);
   }
-  
+
   /**
    * Run the given action as the user, potentially throwing an exception.
    * @param <T> the return type of the run method
@@ -1891,7 +1889,7 @@ public class UserGroupInformation {
                     ) throws IOException, InterruptedException {
     try {
       tracePrivilegedAction(action);
-      return Subject.doAs(subject, action);
+      return SubjectUtil.doAs(subject, action);
     } catch (PrivilegedActionException pae) {
       Throwable cause = pae.getCause();
       LOG.debug("PrivilegedActionException as: {}", this, cause);
